@@ -161,4 +161,5 @@ For issues or questions, please open an issue on the GitHub repository or contac
 
 *This project fulfills the requirements for a Dockerized data pipeline assignment, combining best practices in orchestration, containerization, and data engineering.*  
 *Last updated: August 2025*
+
 *All API secrets and DB credentials have been set to empty in the uploaded .env file to ensure no data breach occurs*
