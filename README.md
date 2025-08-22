@@ -1,7 +1,7 @@
 # Dockerized Stock Data Pipeline with Airflow
 
 ![Pipeline](https://img.shields.io/badge/pipeline-airflow-blue)
-![Docker Compose](https://img.shields.io/badge/docker-compose-enabled-green)
+![Docker Compose](https://img.shields.io/badge/docker--compose-enabled-blue?logo=docker)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 
 ---
