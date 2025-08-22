@@ -1,0 +1,88 @@
+import os
+import requests
+from dotenv import load_dotenv
+import psycopg2
+# Load environment variables from .env file
+load_dotenv()
+
+def fetch_stock_data(symbol):
+    # Read API key from environment
+    api_key = os.getenv("ALPHAVANTAGE_API_KEY")
+    # Fetch latest daily stock data from Alpha Vantage.
+    api_key = os.getenv("ALPHAVANTAGE_API_KEY")
+    url = (
+        "https://www.alphavantage.co/query?"
+        f"function=TIME_SERIES_DAILY&symbol={symbol}&apikey={api_key}"
+    )
+    response = requests.get(url)
+    data = response.json()
+
+    timeseries = data.get("Time Series (Daily)", {})
+    if not timeseries:
+        print("Error: no data returned", data)
+        return None
+
+    # Get latest entry
+    latest_date = sorted(timeseries.keys())[-1]
+    day_data = timeseries[latest_date]
+
+    open_price = float(day_data["1. open"])
+    high = float(day_data["2. high"])
+    low = float(day_data["3. low"])
+    close = float(day_data["4. close"])
+    volume = int(float(day_data["5. volume"]))
+
+    print(f"{symbol} on {latest_date}: {day_data}")
+    return (symbol, latest_date, open_price, high, low, close, volume)
+
+
+def save_stock_data(symbol, date, open_price, high, low, close, volume):
+    try:
+        # Read DB credentials from environment
+        conn = psycopg2.connect(
+            dbname=os.getenv("POSTGRES_DB", "postgres"),
+            user=os.getenv("POSTGRES_USER", "postgres"),
+            password=os.getenv("POSTGRES_PASSWORD"),
+            host=os.getenv("POSTGRES_HOST", "postgres"),
+            port=os.getenv("POSTGRES_PORT", 5432)
+        )
+        cur = conn.cursor()
+        # Create table if not exists
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS stock_data (
+            symbol TEXT, date DATE, open NUMERIC, high NUMERIC, 
+            low NUMERIC, close NUMERIC, volume BIGINT,
+            PRIMARY KEY (symbol, date)
+        );
+        """)
+        # Insert (upsert) the data
+        insert_sql = """
+        INSERT INTO stock_data (symbol, date, open, high, low, close, volume)
+        VALUES (%s,%s,%s,%s,%s,%s,%s)
+        ON CONFLICT (symbol, date) DO UPDATE
+        SET open = EXCLUDED.open,
+            high = EXCLUDED.high,
+            low = EXCLUDED.low,
+            close = EXCLUDED.close,
+            volume = EXCLUDED.volume;
+        """
+        values = (symbol, date, open_price, high, low, close, volume)
+        cur.execute(insert_sql, values)
+        conn.commit()
+        print(f"Saved {symbol} data for {date}")
+    except Exception as e:
+        print("Error saving data:", e)
+    finally:
+        cur.close()
+        conn.close()
+
+
+if __name__ == "__main__":
+
+    symbol = "AAPL"
+    # Fetch stock data
+    row = fetch_stock_data(symbol)
+    if row:
+        save_stock_data(*row)
+
+
